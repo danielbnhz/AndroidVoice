@@ -1,7 +1,8 @@
 #pragma once
 #include "WavetableOscillator.h"
-#include <JuceHeader.h>
 
+#include <juce_audio_processors/juce_audio_processors.h>
+#include <juce_dsp/juce_dsp.h>
 //==============================================================================
 // A single polyphonic voice — oscillator + resonant filter + ADSR envelope
 struct AndroidVoice

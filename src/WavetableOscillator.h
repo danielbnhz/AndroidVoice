@@ -1,6 +1,6 @@
 #pragma once
-#include <JuceHeader.h>
-#include <array>
+#include <juce_audio_processors/juce_audio_processors.h>
+#include <juce_dsp/juce_dsp.h>#include <array>
 #include <random>
 
 // Wavetable size — power of 2 for fast wrapping

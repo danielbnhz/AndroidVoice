@@ -47,3 +47,6 @@ target_link_libraries(AndroidVoice PRIVATE
     juce::juce_recommended_lto_flags
     juce::juce_recommended_warning_flags
 )
+target_include_directories(AndroidVoice PRIVATE
+    ${CMAKE_CURRENT_BINARY_DIR}
+)
