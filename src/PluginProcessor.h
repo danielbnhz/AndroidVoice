@@ -45,6 +45,7 @@ private:
 
     AndroidVoice* getFreeVoice();
     AndroidVoice* getVoiceForNote(int note);
+    void renderVoices(float* buffer, int numSamples);
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(AndroidVoiceProcessor)
 };

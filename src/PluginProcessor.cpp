@@ -22,40 +22,48 @@ void AndroidVoiceProcessor::processBlock(juce::AudioBuffer<float>& buffer,
     juce::ScopedNoDenormals noDenormals;
     buffer.clear();
 
-    // Mono processing buffer then copy to all output channels
     std::vector<float> monoBuffer(buffer.getNumSamples(), 0.0f);
 
-    // Handle MIDI events
+    int blockStart = 0;
+
     for (const auto meta : midiMessages)
     {
+        const int eventPos = meta.samplePosition;
         auto msg = meta.getMessage();
-        if (msg.isNoteOn())
+
+        if (eventPos > blockStart)
         {
+            renderVoices(monoBuffer.data() + blockStart, eventPos - blockStart);
+            blockStart = eventPos;
+        }
+
+        if (msg.isNoteOn() && msg.getVelocity() > 0)
+        {
+            const int noteNum = msg.getNoteNumber();
+
+            // Release any voice currently playing this exact note
+            if (auto* existing = getVoiceForNote(noteNum))
+                existing->noteOff();
+
             auto* voice = getFreeVoice();
             if (voice)
-                voice->noteOn(msg.getNoteNumber(), msg.getFloatVelocity());
+                voice->noteOn(noteNum, msg.getFloatVelocity());
         }
-        else if (msg.isNoteOff())
+        else if (msg.isNoteOff() || (msg.isNoteOn() && msg.getVelocity() == 0))
         {
-            auto* voice = getVoiceForNote(msg.getNoteNumber());
-            if (voice)
+            if (auto* voice = getVoiceForNote(msg.getNoteNumber()))
                 voice->noteOff();
         }
-        else if (msg.isAllNotesOff())
+        else if (msg.isAllNotesOff() || msg.isAllSoundOff())
         {
             for (auto& v : voices)
-                v->noteOff();
+                v->forceOff();
         }
     }
 
-    // Process all active voices into mono buffer
-    for (auto& v : voices)
-    {
-        if (v->isActive())
-            v->process(monoBuffer.data(), buffer.getNumSamples());
-    }
+    if (blockStart < buffer.getNumSamples())
+        renderVoices(monoBuffer.data() + blockStart, buffer.getNumSamples() - blockStart);
 
-    // Copy mono mix to all output channels
     for (int ch = 0; ch < buffer.getNumChannels(); ++ch)
     {
         auto* channelData = buffer.getWritePointer(ch);
@@ -64,19 +72,37 @@ void AndroidVoiceProcessor::processBlock(juce::AudioBuffer<float>& buffer,
     }
 }
 
+void AndroidVoiceProcessor::renderVoices(float* buffer, int numSamples)
+{
+    if (numSamples <= 0) return;
+    for (auto& v : voices)
+        if (v->isActive())
+            v->process(buffer, numSamples);
+}
+
 AndroidVoice* AndroidVoiceProcessor::getFreeVoice()
 {
+    // Prefer truly inactive voices first
     for (auto& v : voices)
         if (!v->isActive())
             return v.get();
-    // Voice steal — return first voice (oldest)
+
+    // Then steal a releasing voice (already fading out)
+    for (auto& v : voices)
+        if (!v->isPlayingNote(v->note))
+            return v.get();
+
+    // Last resort: steal oldest voice
+    voices[0]->forceOff();
     return voices[0].get();
 }
 
 AndroidVoice* AndroidVoiceProcessor::getVoiceForNote(int note)
 {
+    // Only match voices actively PLAYING this note
+    // Releasing voices are intentionally excluded
     for (auto& v : voices)
-        if (v->isActive() && v->note == note)
+        if (v->isPlayingNote(note))
             return v.get();
     return nullptr;
 }
