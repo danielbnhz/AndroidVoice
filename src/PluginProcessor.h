@@ -14,6 +14,7 @@ public:
     void prepareToPlay(double sampleRate, int samplesPerBlock) override;
     void releaseResources() override {}
     void processBlock(juce::AudioBuffer<float>&, juce::MidiBuffer&) override;
+    static juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
 
     juce::AudioProcessorEditor* createEditor() override { return nullptr; }
     bool hasEditor() const override { return false; }
@@ -42,7 +43,8 @@ public:
 private:
     std::array<float, WAVETABLE_SIZE> wavetable;
     std::vector<std::unique_ptr<AndroidVoice>> voices;
-
+    juce::AudioProcessorValueTreeState apvts;
+    
     AndroidVoice* getFreeVoice();
     AndroidVoice* getVoiceForNote(int note);
     void renderVoices(float* buffer, int numSamples);

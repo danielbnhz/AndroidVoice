@@ -2,7 +2,8 @@
 
 AndroidVoiceProcessor::AndroidVoiceProcessor()
     : AudioProcessor(BusesProperties()
-        .withOutput("Output", juce::AudioChannelSet::stereo(), true))
+        .withOutput("Output", juce::AudioChannelSet::stereo(), true)),
+        apvts(*this, nullptr, "Parameters", createParameterLayout())
 {
     wavetable = buildAndroidWavetable();
 
@@ -20,6 +21,18 @@ void AndroidVoiceProcessor::processBlock(juce::AudioBuffer<float>& buffer,
                                           juce::MidiBuffer& midiMessages)
 {
     juce::ScopedNoDenormals noDenormals;
+
+
+    float attack  = apvts.getRawParameterValue("attack")->load();
+    float decay   = apvts.getRawParameterValue("decay")->load();
+    float sustain = apvts.getRawParameterValue("sustain")->load();
+    float release = apvts.getRawParameterValue("release")->load();
+
+    juce::ADSR::Parameters adsrParams{ attack, decay, sustain, release };
+    for (auto& v : voices)
+        v->setADSRParameters(adsrParams);
+
+
     buffer.clear();
 
     std::vector<float> monoBuffer(buffer.getNumSamples(), 0.0f);
@@ -110,4 +123,28 @@ AndroidVoice* AndroidVoiceProcessor::getVoiceForNote(int note)
 juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter()
 {
     return new AndroidVoiceProcessor();
+}
+
+
+juce::AudioProcessorValueTreeState::ParameterLayout 
+AndroidVoiceProcessor::createParameterLayout()
+{
+    std::vector<std::unique_ptr<juce::RangedAudioParameter>> params;
+
+    params.push_back(std::make_unique<juce::AudioParameterFloat>(
+        "lfo_rate", "LFO Rate", 0.3f, 4.5f, 1.5f));
+    params.push_back(std::make_unique<juce::AudioParameterFloat>(
+        "lfo_depth", "LFO Depth", 0.05f, 0.35f, 0.15f));
+    params.push_back(std::make_unique<juce::AudioParameterFloat>(
+        "filter_cutoff", "Filter Cutoff", 400.f, 5000.f, 2000.f));
+    params.push_back(std::make_unique<juce::AudioParameterFloat>(
+        "attack", "Attack", 0.001f, 0.5f, 0.015f));
+    params.push_back(std::make_unique<juce::AudioParameterFloat>(
+        "decay", "Decay", 0.01f, 1.0f, 0.2f));
+    params.push_back(std::make_unique<juce::AudioParameterFloat>(
+        "sustain", "Sustain", 0.0f, 1.0f, 0.7f));
+    params.push_back(std::make_unique<juce::AudioParameterFloat>(
+        "release", "Release", 0.05f, 2.0f, 0.4f));
+
+    return { params.begin(), params.end() };
 }

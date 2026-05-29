@@ -1,5 +1,5 @@
 # AndroidVoice - Technical Design Document
-*nth_tech | prototype_v1.1 | authored by Retkeren*
+*nth_tech | prototype_v1.1 *
 
 ---
 

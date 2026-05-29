@@ -73,6 +73,13 @@ struct AndroidVoice
         osc.setActive(false);
         note = -1;
     }
+   
+   
+    void setADSRParameters(const juce::ADSR::Parameters& p)
+    {
+        envelope.setParameters(p);
+    }
+
 
     // Returns true while voice still has audio to contribute
     bool process(float* outputBuffer, int numSamples)
